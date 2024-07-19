@@ -26,6 +26,8 @@ public class Pedido {
     @Column(name = "valor_total_pedido")
     private Double valorTotalPedido;
 
+    private Integer totalProdutosComprados;
+
     @ManyToMany
     @JoinTable(
             name = "pedido_produto",
@@ -47,16 +49,13 @@ public class Pedido {
     }
 
     public void atualizarProdutos(Set<Produto> novosProdutos) {
-        this.produtos.clear();
-        this.produtos.addAll(novosProdutos);
+        this.produtos = novosProdutos;
+        atualizarValorTotalPedido();
     }
 
     public void alterar(Pedido pedido) {
         if (pedido.numeroPedido != null) {
             this.setNumeroPedido(pedido.getNumeroPedido());
-        }
-        if (pedido.valorTotalPedido != null) {
-            this.setValorTotalPedido(pedido.getValorTotalPedido());
         }
         if (pedido.comprador != null) {
             this.setComprador(pedido.getComprador());
@@ -66,6 +65,21 @@ public class Pedido {
         }
     }
 
+    public void atualizarValorTotalPedido() {
+        this.valorTotalPedido = produtos.stream()
+                .mapToDouble(Produto::getValorProduto)
+                .sum();
+    }
 
+    public void atualizaValorTotalProdutosComprados() {
+        this.totalProdutosComprados =  produtos.size();
+    }
 
+    public String getNomeFornecedor() {
+        return produtos.stream()
+                .map(Produto::getFornecedor) // Assumindo que Produto tem um método getFornecedor()
+                .map(fornecedor -> fornecedor.getNome()) // Assumindo que Fornecedor tem um método getNome()
+                .findFirst()
+                .orElse("Fornecedor não encontrado");
+    }
 }

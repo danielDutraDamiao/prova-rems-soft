@@ -3,6 +3,7 @@ package com.daniel.provaremssoft.pedido.service;
 import com.daniel.provaremssoft.comprador.model.Comprador;
 import com.daniel.provaremssoft.comprador.repository.CompradorRepository;
 import com.daniel.provaremssoft.pedido.model.Pedido;
+import com.daniel.provaremssoft.pedido.model.dto.PedidoDTO;
 import com.daniel.provaremssoft.pedido.model.dto.PedidoForm;
 import com.daniel.provaremssoft.pedido.repository.PedidoRepository;
 import com.daniel.provaremssoft.produto.model.Produto;
@@ -28,37 +29,70 @@ public class PedidoService {
     @Autowired
     private CompradorRepository compradorRepository;
 
-    public Pedido inserePedido(PedidoForm pedidoForm) {
+    public PedidoDTO inserePedido(PedidoForm pedidoForm) {
+        // Buscar produtos baseados nos IDs fornecidos
         Set<Produto> produtos = pedidoForm.getProdutoIds().stream()
-                .map(id -> produtoRepository.findById(id)
-                        .orElseThrow(() -> new IllegalArgumentException("Produto não encontrado para o ID: " + id)))
+                .map(produtoRepository::findById)
+                .filter(Optional::isPresent)
+                .map(Optional::get)
                 .collect(Collectors.toSet());
 
+        // Buscar comprador pelo ID fornecido
         Comprador comprador = compradorRepository.findById(pedidoForm.getCompradorId())
                 .orElseThrow(() -> new IllegalArgumentException("Comprador não encontrado para o ID: " + pedidoForm.getCompradorId()));
 
-        return this.pedidoRepository.save(pedidoForm.toModel(produtos, comprador));
+        // Criar um novo Pedido com os dados fornecidos
+        Pedido pedido = pedidoForm.toModel(produtos, comprador);
+
+        pedido.atualizarValorTotalPedido();
+        pedido.atualizaValorTotalProdutosComprados();
+
+        // Salvar o pedido no banco de dados
+        Pedido salvo = pedidoRepository.save(pedido);
+
+        // Retornar o DTO do pedido salvo
+        return new PedidoDTO(salvo);
     }
 
-    public Optional<Pedido> buscaPedidoPorId(UUID id) {
-        return pedidoRepository.findById(id);
+
+
+    public List<PedidoDTO> listarTodosPedidos() {
+        return pedidoRepository.findAll().stream().map(PedidoDTO::new).collect(Collectors.toList());
     }
 
-    public Pedido save(Pedido pedido) {
-        return pedidoRepository.save(pedido);
+    public PedidoDTO buscaPedidoPorId(UUID id) {
+        Pedido pedido = pedidoRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Pedido não encontrado"));
+        return new PedidoDTO(pedido);
     }
 
-    public List<Pedido> listarTodosPedidos() {
-        return this.pedidoRepository.findAll();
+    public PedidoDTO alterarPedido(PedidoForm pedidoForm, UUID id) {
+        Pedido pedido = pedidoRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Pedido não encontrado"));
+
+        if (pedidoForm.getCompradorId() != null && !pedido.getComprador().getId().equals(pedidoForm.getCompradorId())) {
+            Comprador novoComprador = compradorRepository.findById(pedidoForm.getCompradorId())
+                    .orElseThrow(() -> new IllegalArgumentException("Comprador não encontrado para o ID: " + pedidoForm.getCompradorId()));
+            pedido.setComprador(novoComprador);
+        }
+
+        if (pedidoForm.getProdutoIds() != null && !pedidoForm.getProdutoIds().isEmpty()) {
+            Set<Produto> novosProdutos = pedidoForm.getProdutoIds().stream()
+                    .map(produtoRepository::findById)
+                    .filter(Optional::isPresent)
+                    .map(Optional::get)
+                    .collect(Collectors.toSet());
+            pedido.atualizarProdutos(novosProdutos);
+        }
+
+        if (pedidoForm.getNumeroPedido() != null) {
+            pedido.setNumeroPedido(pedidoForm.getNumeroPedido());
+        }
+
+        Pedido atualizado = pedidoRepository.save(pedido);
+        return new PedidoDTO(atualizado);
     }
 
-    public Pedido buscaPedidoPorIdTela(UUID id) {
-        Optional<Pedido> pedido = this.pedidoRepository.findById(id);
-        return pedido.orElse(new Pedido());
-    }
-
-    public void removePedido(UUID id){
-        Pedido pedidoAtual = this.buscaPedidoPorIdTela(id);
-        this.pedidoRepository.delete(pedidoAtual);
+    public void removerPedido(UUID id) {
+        Pedido pedido = pedidoRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Pedido não encontrado"));
+        pedidoRepository.delete(pedido);
     }
 }

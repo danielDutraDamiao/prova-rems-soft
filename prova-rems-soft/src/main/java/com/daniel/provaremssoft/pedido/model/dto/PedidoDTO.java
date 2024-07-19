@@ -1,5 +1,7 @@
 package com.daniel.provaremssoft.pedido.model.dto;
 
+import com.daniel.provaremssoft.comprador.model.Comprador;
+import com.daniel.provaremssoft.fornecedor.model.Fornecedor;
 import com.daniel.provaremssoft.pedido.model.Pedido;
 import com.daniel.provaremssoft.produto.model.Produto;
 import lombok.Data;
@@ -14,15 +16,22 @@ public class PedidoDTO {
     private UUID id;
     private String numeroPedido;
     private Double valorTotalPedido;
-    private Set<UUID> produtoIds;
-    private UUID compradorId;
+    private Set<Produto> produtos;
+    private Comprador comprador;
+    private String nomeFornecedor; // Adicionado para o nome do fornecedor
+    private Integer totalProdutosComprados;
 
     public PedidoDTO(Pedido pedido) {
         this.id = pedido.getId();
         this.numeroPedido = pedido.getNumeroPedido();
         this.valorTotalPedido = pedido.getValorTotalPedido();
-        this.produtoIds = pedido.getProdutos().stream().map(Produto::getId).collect(Collectors.toSet());
-        this.compradorId = pedido.getComprador().getId();
+        this.produtos = pedido.getProdutos();
+        this.comprador = pedido.getComprador();
+        this.nomeFornecedor = pedido.getProdutos().stream()
+                .findFirst()
+                .map(Produto::getFornecedor) // Acessar o fornecedor do primeiro produto
+                .map(Fornecedor::getNome)
+                .orElse("Desconhecido");
+        this.totalProdutosComprados = pedido.getTotalProdutosComprados();
     }
-
 }

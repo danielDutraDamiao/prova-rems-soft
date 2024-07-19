@@ -15,14 +15,16 @@ import java.util.UUID;
 @AllArgsConstructor
 public class PedidoForm {
 
-    private UUID id;
     private String numeroPedido;
-    private Double valorTotalPedido;
     private Set<UUID> produtoIds;
     private UUID compradorId;
 
     public Pedido toModel(Set<Produto> produtos, Comprador comprador) {
-        return new Pedido(id, numeroPedido, valorTotalPedido, produtos, comprador);
+        Pedido pedido = new Pedido();
+        pedido.setNumeroPedido(this.numeroPedido);
+        pedido.setProdutos(produtos);
+        pedido.setComprador(comprador);
+        // O valorTotalPedido será calculado automaticamente
+        return pedido;
     }
-
 }

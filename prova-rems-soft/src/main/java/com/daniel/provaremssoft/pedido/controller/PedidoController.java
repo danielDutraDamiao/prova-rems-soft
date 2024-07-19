@@ -32,74 +32,34 @@ public class PedidoController {
     CompradorRepository compradorRepository;
 
     @PostMapping("/inserir-pedido")
-    public Pedido inserePedido(@RequestBody PedidoForm pedidoForm) {
-        return pedidoService.inserePedido(pedidoForm);
+    public ResponseEntity<PedidoDTO> inserePedido(@RequestBody PedidoForm pedidoForm) {
+        PedidoDTO pedidoDTO = pedidoService.inserePedido(pedidoForm);
+        return ResponseEntity.ok(pedidoDTO);
     }
 
     @GetMapping(path = "listar")
     public ResponseEntity<List<PedidoDTO>> listarTodosPedidos() {
-        List<Pedido> pedidos = this.pedidoService.listarTodosPedidos();
-        List<PedidoDTO> pedidosDTO = pedidos.stream()
-                .map(PedidoDTO::new)
-                .collect(Collectors.toList());
+        List<PedidoDTO> pedidosDTO = this.pedidoService.listarTodosPedidos();
         return ResponseEntity.ok(pedidosDTO);
     }
 
     @GetMapping(path = "buscar/{id}")
-    public ResponseEntity<PedidoDTO> buscaProdutoPorId(@PathVariable UUID id) {
-        return ResponseEntity.ok(new PedidoDTO(this.pedidoService.buscaPedidoPorIdTela(id)));
+    public ResponseEntity<PedidoDTO> buscaPedidoPorId(@PathVariable UUID id) {
+        PedidoDTO pedidoDTO = this.pedidoService.buscaPedidoPorId(id);
+        return ResponseEntity.ok(pedidoDTO);
     }
 
     @PutMapping("/alterar-pedido/{id}")
-    public Pedido alterarPedido(@RequestBody PedidoForm pedidoForm, @PathVariable UUID id) {
-        Optional<Pedido> pedidoExistente = pedidoService.buscaPedidoPorId(id);
-
-        if (pedidoExistente.isPresent()) {
-            Pedido pedidoDadosAntiga = pedidoExistente.get();
-
-            // Verifica se o comprador é diferente
-            if (pedidoForm.getCompradorId() != null && !pedidoDadosAntiga.getComprador().getId().equals(pedidoForm.getCompradorId())) {
-                Comprador novoComprador = compradorRepository.findById(pedidoForm.getCompradorId())
-                        .orElseThrow(() -> new IllegalArgumentException("Comprador não encontrado para o ID: " + pedidoForm.getCompradorId()));
-                pedidoDadosAntiga.setComprador(novoComprador);
-            }
-
-            // Atualiza os produtos, se algum ID de produto for fornecido
-            if (pedidoForm.getProdutoIds() != null) {
-                Set<Produto> novosProdutos = pedidoForm.getProdutoIds().stream()
-                        .map(produtoRepository::findById)
-                        .filter(Optional::isPresent)
-                        .map(Optional::get)
-                        .collect(Collectors.toSet());
-                pedidoDadosAntiga.atualizarProdutos(novosProdutos);
-            }
-
-            pedidoDadosAntiga.setNumeroPedido(pedidoForm.getNumeroPedido());
-            pedidoDadosAntiga.setValorTotalPedido(pedidoForm.getValorTotalPedido());
-
-            return pedidoService.save(pedidoDadosAntiga);
-        } else {
-            // Se o pedido não existe, crie um novo com o ID especificado
-            Set<Produto> produtos = pedidoForm.getProdutoIds().stream()
-                    .map(produtoRepository::findById)
-                    .filter(Optional::isPresent)
-                    .map(Optional::get)
-                    .collect(Collectors.toSet());
-
-            Comprador comprador = compradorRepository.findById(pedidoForm.getCompradorId())
-                    .orElseThrow(() -> new IllegalArgumentException("Comprador não encontrado para o ID: " + pedidoForm.getCompradorId()));
-
-            Pedido novoPedido = pedidoForm.toModel(produtos, comprador);
-            novoPedido.setId(id);
-            return pedidoService.save(novoPedido);
-        }
+    public ResponseEntity<PedidoDTO> alterarPedido(@RequestBody PedidoForm pedidoForm, @PathVariable UUID id) {
+        PedidoDTO pedidoDTO = pedidoService.alterarPedido(pedidoForm, id);
+        return ResponseEntity.ok(pedidoDTO);
     }
-
 
     @DeleteMapping(path = "remover/{id}")
-    public ResponseEntity<Void> removePedido(@PathVariable UUID id){
-        this.pedidoService.removePedido(id);
+    public ResponseEntity<Void> removePedido(@PathVariable UUID id) {
+        this.pedidoService.removerPedido(id);
         return ResponseEntity.noContent().build();
     }
-    
+
+
 }
